@@ -1354,7 +1354,6 @@ def weekly_stats():
 #     with workout_lock:
 #         workout_state.update({"running": True, "exercise": key, "reps": 0, "feedback": "Setup", "_frame": None})
 #     return jsonify({"status": "started", "exercise": key})
-
 @app.route("/api/workout/start", methods=["POST"])
 @login_required
 def workout_start():
@@ -1364,9 +1363,11 @@ def workout_start():
     lang = b.get("language", "ar")
     if key not in EXERCISE_MAP:
         return jsonify({"error": f"Unknown: {key}"}), 400
+    
+    # ← ضيف السطر ده: force reset لو في session قديمة
     with workout_lock:
-        if workout_state["running"]:
-            return jsonify({"error": "Already running"}), 409
+        workout_state.update({"running": False, "exercise": None, "reps": 0, "feedback": "Ready", "_frame": None})
+    
     with workout_lock:
         workout_state.update({"running": True, "exercise": key, "reps": 0, "feedback": "Setup", "_frame": None})
     return jsonify({"status": "started", "exercise": key})
