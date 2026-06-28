@@ -946,17 +946,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
   }
 
-    // ضيف دي ← 
-  setTimeout(async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      stream.getTracks().forEach(t => t.stop()); // وقفها على طول بس خدنا الـ permission
-    } catch (err) {
-      console.warn('Camera permission not granted:', err);
-    }
-  }, 1000);
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('/sw.js').catch(console.error);
-  }
 });
