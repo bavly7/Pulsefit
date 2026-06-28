@@ -30,4 +30,4 @@ RUN pip install --no-cache-dir opencv-python-headless==4.8.1.78
 COPY . .
 
 # 7. تشغيل السيرفر وربطه بالبورت بتاع Railway
-CMD ["sh", "-c", "gunicorn --bind 0.0.0.0:$PORT --timeout 120 --workers 1 app:app"]
+CMD gunicorn --bind 0.0.0.0:${PORT:-5000} --timeout 120 --workers 1 app:app
