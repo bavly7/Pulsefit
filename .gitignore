@@ -30,6 +30,7 @@ __pycache__/
 voicecach/
 .DS_Store
 Thumbs.db
+voice_cache/
 
 # --- لو في ملفات Log أو نتايج تجارب ---
 *.log
