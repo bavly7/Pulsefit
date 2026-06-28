@@ -1,0 +1,36 @@
+# --- إعدادات Python و البيئة الافتراضية ---
+venv/
+env/
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.env.example
+
+# --- قاعدة البيانات ---
+*.db
+*.sqlite
+*.sqlite3
+
+# --- الموديلات الكبيرة (YOLO) ---
+# سيبنا بس اللي إنت محتاجه، وأي موديل تقيل نطلعه برا الـ Git
+*.pt
+*.pth
+
+
+# --- ملفات الـ Environment والحساسة ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# --- الكاش والملفات المؤقتة ---
+voicecach/
+.DS_Store
+Thumbs.db
+
+# --- لو في ملفات Log أو نتايج تجارب ---
+*.log
+*.tmp
