@@ -3,7 +3,7 @@ FROM python:3.12-slim
 
 # 2. تسطيب كل ملفات اللينكس والواجهة اللي المكتبات بتعيط عليها
 RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+    libgl1 \
     libglib2.0-0 \
     libsm6 \
     libxext6 \
@@ -22,7 +22,7 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 5. الضربة القاضية: مسح النسخة العادية اللي YOLO بينزلها بالعافية، وتأكيد الـ Headless
+# 5. مسح النسخة العادية وتأكيد الـ Headless
 RUN pip uninstall -y opencv-python || true
 RUN pip install --no-cache-dir opencv-python-headless==4.8.1.78
 
