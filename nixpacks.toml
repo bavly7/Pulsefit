@@ -1,0 +1,15 @@
+[providers]
+python = true
+
+[phases.setup]
+aptPkgs = [
+    "libgl1-mesa-glx",
+    "libglib2.0-0",
+    "libsm6",
+    "libxext6",
+    "libxrender-dev",
+    "libxcb1",
+    "libx11-xcb1",
+    "libxcb-shape0",
+    "libxcb-xfixes0"
+]
