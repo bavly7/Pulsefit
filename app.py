@@ -79,15 +79,17 @@ app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)  # stay logged in 
 # ══════════════════════════════════════════════════════════════
 # WORKOUT / CAMERA
 # ══════════════════════════════════════════════════════════════
+# def _load_pose_model():
+#     """Load YOLO only when workout/camera is used (saves ~2GB if you only need Nutrition)."""
+#     global pose_model
+#     if pose_model is None:
+#         model_path = str(_APP_ROOT / "yolo11n-pose.pt")
+#         if not os.path.exists(model_path):
+#             raise FileNotFoundError(f"yolo11n-pose.pt model not found at {model_path}")
+#         from ultralytics import YOLO
+#         pose_model = YOLO(model_path)
 def _load_pose_model():
-    """Load YOLO only when workout/camera is used (saves ~2GB if you only need Nutrition)."""
-    global pose_model
-    if pose_model is None:
-        model_path = str(_APP_ROOT / "yolo11n-pose.pt")
-        if not os.path.exists(model_path):
-            raise FileNotFoundError(f"yolo11n-pose.pt model not found at {model_path}")
-        from ultralytics import YOLO
-        pose_model = YOLO(model_path)
+    pass  # YOLO removed - all exercises use client-side MediaPipe
 
 # ══════════════════════════════════════════════════════════════
 # DATABASE SETUP (SQLite)
@@ -1332,78 +1334,100 @@ def weekly_stats():
         "fatigue_level": fatigue_level,
         "deload_suggested": deload_suggested
     })
+# @app.route("/api/workout/start", methods=["POST"])
+# @login_required
+# def workout_start():
+#     global current_trainer, workout_state
+#     b   = request.get_json(force=True) or {}; key = b.get("exercise", "tricep_pushdown")
+#     lang = b.get("language", "ar")
+#     if key not in EXERCISE_MAP: return jsonify({"error": f"Unknown: {key}"}), 400
+#     with workout_lock:
+#         if workout_state["running"]: return jsonify({"error": "Already running"}), 409
+#     try:
+#         _load_pose_model()
+#     except (FileNotFoundError, ImportError, Exception) as e:
+#         print(f"[workout_start] model load error: {e}")
+#         return jsonify({"error": f"Model load failed: {e}"}), 503
+#     t = _load_trainer(key, lang)
+#     if t is None: return jsonify({"error": f"Load failed: {key}"}), 500
+#     current_trainer = t
+#     with workout_lock:
+#         workout_state.update({"running": True, "exercise": key, "reps": 0, "feedback": "Setup", "_frame": None})
+#     return jsonify({"status": "started", "exercise": key})
+
 @app.route("/api/workout/start", methods=["POST"])
 @login_required
 def workout_start():
     global current_trainer, workout_state
-    b   = request.get_json(force=True) or {}; key = b.get("exercise", "tricep_pushdown")
+    b = request.get_json(force=True) or {}
+    key = b.get("exercise", "tricep_pushdown")
     lang = b.get("language", "ar")
-    if key not in EXERCISE_MAP: return jsonify({"error": f"Unknown: {key}"}), 400
+    if key not in EXERCISE_MAP:
+        return jsonify({"error": f"Unknown: {key}"}), 400
     with workout_lock:
-        if workout_state["running"]: return jsonify({"error": "Already running"}), 409
-    try:
-        _load_pose_model()
-    except (FileNotFoundError, ImportError, Exception) as e:
-        print(f"[workout_start] model load error: {e}")
-        return jsonify({"error": f"Model load failed: {e}"}), 503
-    t = _load_trainer(key, lang)
-    if t is None: return jsonify({"error": f"Load failed: {key}"}), 500
-    current_trainer = t
+        if workout_state["running"]:
+            return jsonify({"error": "Already running"}), 409
     with workout_lock:
         workout_state.update({"running": True, "exercise": key, "reps": 0, "feedback": "Setup", "_frame": None})
     return jsonify({"status": "started", "exercise": key})
 
+# @app.route("/api/workout/frame", methods=["POST"])
+# @login_required
+# def workout_frame():
+#     if "frame" not in request.files: 
+#         return jsonify({"error": "No frame"}), 400
+    
+#     try:
+#         import cv2
+#         import numpy as np
+#     except ImportError:
+#         return jsonify({
+#             "error": "Workout camera needs OpenCV. Run: py -m pip install opencv-python-headless numpy"
+#         }), 503
+
+#     frame = cv2.imdecode(np.frombuffer(request.files["frame"].read(), np.uint8), cv2.IMREAD_COLOR)
+#     if frame is None: 
+#         return jsonify({"error": "Decode failed"}), 400
+        
+#     with workout_lock:
+#         if not workout_state["running"] or current_trainer is None:
+#             return jsonify({"running": False, "reps": 0, "feedback": "Session ended"}), 200
+            
+#     try:
+#         _load_pose_model()
+        
+#         r = pose_model.track(frame, persist=True, verbose=False)
+        
+#         if not r or r[0].keypoints is None or len(r[0].keypoints.xy) == 0:
+#             return jsonify({"running": True, "reps": workout_state["reps"], "feedback": "Can't see you – step back"})
+            
+#         kp = r[0].keypoints.xy[0].cpu().numpy()
+#         cf = r[0].keypoints.conf[0].cpu().numpy()
+        
+#         if kp.shape[0] == 0:
+#             return jsonify({"running": True, "reps": workout_state["reps"], "feedback": "Can't see you – step back"})
+            
+#         with workout_lock:
+#             if not workout_state["running"]:
+#                 return jsonify({"running": False, "reps": workout_state["reps"], "feedback": "Session ended"}), 200
+                
+#         current_trainer.process(frame, kp, cf)
+        
+#         with workout_lock:
+#             workout_state["reps"]    = current_trainer.counter
+#             workout_state["feedback"] = current_trainer.feedback
+#             return jsonify({"running": True, "reps": workout_state["reps"], "feedback": workout_state["feedback"]})
+            
+#     except Exception as e:
+#         print(f"[Frame] {e}")
+#         return jsonify({"error": "Processing error"}), 500
 
 @app.route("/api/workout/frame", methods=["POST"])
 @login_required
 def workout_frame():
-    if "frame" not in request.files: 
-        return jsonify({"error": "No frame"}), 400
-    
-    try:
-        import cv2
-        import numpy as np
-    except ImportError:
-        return jsonify({
-            "error": "Workout camera needs OpenCV. Run: py -m pip install opencv-python-headless numpy"
-        }), 503
-
-    frame = cv2.imdecode(np.frombuffer(request.files["frame"].read(), np.uint8), cv2.IMREAD_COLOR)
-    if frame is None: 
-        return jsonify({"error": "Decode failed"}), 400
-        
+    # All processing now done client-side via MediaPipe
     with workout_lock:
-        if not workout_state["running"] or current_trainer is None:
-            return jsonify({"running": False, "reps": 0, "feedback": "Session ended"}), 200
-            
-    try:
-        _load_pose_model()
-        
-        r = pose_model.track(frame, persist=True, verbose=False)
-        
-        if not r or r[0].keypoints is None or len(r[0].keypoints.xy) == 0:
-            return jsonify({"running": True, "reps": workout_state["reps"], "feedback": "Can't see you – step back"})
-            
-        kp = r[0].keypoints.xy[0].cpu().numpy()
-        cf = r[0].keypoints.conf[0].cpu().numpy()
-        
-        if kp.shape[0] == 0:
-            return jsonify({"running": True, "reps": workout_state["reps"], "feedback": "Can't see you – step back"})
-            
-        with workout_lock:
-            if not workout_state["running"]:
-                return jsonify({"running": False, "reps": workout_state["reps"], "feedback": "Session ended"}), 200
-                
-        current_trainer.process(frame, kp, cf)
-        
-        with workout_lock:
-            workout_state["reps"]    = current_trainer.counter
-            workout_state["feedback"] = current_trainer.feedback
-            return jsonify({"running": True, "reps": workout_state["reps"], "feedback": workout_state["feedback"]})
-            
-    except Exception as e:
-        print(f"[Frame] {e}")
-        return jsonify({"error": "Processing error"}), 500
+        return jsonify({"running": workout_state["running"], "reps": workout_state["reps"], "feedback": workout_state["feedback"]})
 
 @app.route("/api/workout/stop", methods=["POST"])
 @login_required
