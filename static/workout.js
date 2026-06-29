@@ -820,12 +820,8 @@ function captureAndSend() {
 // START
 // ══════════════════════════════════════════════════════════════
 async function startWorkout() {
-      if ('speechSynthesis' in window) {
-        const u = new SpeechSynthesisUtterance('');
-        u.volume = 0;
-        window.speechSynthesis.speak(u);
-    }
-  lastRepTime = 0;
+
+lastRepTime = 0;
 lastSpeakTime = {};
 elbowErrorStart = 0;
 
