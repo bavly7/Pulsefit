@@ -701,36 +701,28 @@ function setReps(reps) {
     
 //     window.speechSynthesis.speak(msg);
 // }
-
-async function speakCoach(text, type = 'warn') {
+function speakCoach(text, type = 'warn') {
     const now = Date.now();
     const cooldowns = { err: 3000, ok: 4000, warn: 5000, info: 6000 };
     const cooldown = cooldowns[type] || 4000;
-    
     if (lastSpeakTime[text] && (now - lastSpeakTime[text] < cooldown)) return;
     lastSpeakTime[text] = now;
 
-    // لو APK (Capacitor متاح)
-    if (window.Capacitor && window.Capacitor.isNativePlatform()) {
-        try {
-            const { TextToSpeech } = await import('@capacitor-community/text-to-speech');
-            await TextToSpeech.speak({
-                text: text,
-                lang: document.getElementById('language-select').value === 'ar' ? 'ar-SA' : 'en-US',
-                rate: 1.0,
-                pitch: 1.0,
-                volume: 1.0
-            });
-        } catch (e) {
-            console.warn('TTS error:', e);
-        }
+    // لو شغال جوا APK
+    if (window.Capacitor?.Plugins?.TextToSpeech) {
+        window.Capacitor.Plugins.TextToSpeech.speak({
+            text: text,
+            lang: document.getElementById('language-select').value === 'ar' ? 'ar-SA' : 'en-US',
+            rate: 1.0,
+            pitch: 1.0,
+            volume: 1.0
+        }).catch(e => console.warn('TTS:', e));
         return;
     }
 
-    // لو browser عادي (Railway/web)
+    // لو شغال في browser عادي
     if (!('speechSynthesis' in window)) return;
-    if (window.speechSynthesis.speaking) window.speechSynthesis.cancel();
-    
+    if (type === 'err') window.speechSynthesis.cancel();
     const msg = new SpeechSynthesisUtterance(text);
     msg.lang = document.getElementById('language-select').value === 'ar' ? 'ar-SA' : 'en-US';
     msg.rate = 1.0;
