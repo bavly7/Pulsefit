@@ -667,67 +667,69 @@ function setReps(reps) {
 }
 
 
-// function speakCoach(text, type = 'warn') {
-//     if (!('speechSynthesis' in window)) return;
-
-//     const now = Date.now();
-//     // إعدادات الـ Cooldown بالملي ثانية (زي اللي في البايثون)
-//     const cooldowns = {
-//         err: 3000,   // الأخطاء نقدر نكررها كل 3 ثواني
-//         ok: 4000,    // التشجيع كل 4 ثواني
-//         warn: 5000,  // التنبيهات كل 5 ثواني
-//         info: 6000
-//     };
-//     const cooldown = cooldowns[type] || 4000;
-
-//     // لو لسه قايلين نفس الجملة من وقت أقل من الـ Cooldown، اعملها سكيب
-//     if (lastSpeakTime[text] && (now - lastSpeakTime[text] < cooldown)) {
-//         return;
-//     }
-
-//     lastSpeakTime[text] = now;
-
-//     // اقطع الكلام القديم (عشان تزعقله) *فقط* لو الرسالة إيرور (err)
-//     if (type === 'err') {
-//         window.speechSynthesis.cancel();
-//     }
-
-//     const msg = new SpeechSynthesisUtterance(text);
-//     const lang = document.getElementById('language-select').value;
-//     msg.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
-    
-//     // ممكن تعدل سرعة الكلام لو حاسس إنه بطيء (1.0 هو الطبيعي)
-//     msg.rate = 1.0; 
-    
-//     window.speechSynthesis.speak(msg);
-// }
 function speakCoach(text, type = 'warn') {
-    const now = Date.now();
-    const cooldowns = { err: 3000, ok: 4000, warn: 5000, info: 6000 };
-    const cooldown = cooldowns[type] || 4000;
-    if (lastSpeakTime[text] && (now - lastSpeakTime[text] < cooldown)) return;
-    lastSpeakTime[text] = now;
+    if (!('speechSynthesis' in window)) return;
 
-    // لو شغال جوا APK
-    if (window.Capacitor?.Plugins?.TextToSpeech) {
-        window.Capacitor.Plugins.TextToSpeech.speak({
-            text: text,
-            lang: document.getElementById('language-select').value === 'ar' ? 'ar-SA' : 'en-US',
-            rate: 1.0,
-            pitch: 1.0,
-            volume: 1.0
-        }).catch(e => console.warn('TTS:', e));
+    const now = Date.now();
+    // إعدادات الـ Cooldown بالملي ثانية (زي اللي في البايثون)
+    const cooldowns = {
+        err: 3000,   // الأخطاء نقدر نكررها كل 3 ثواني
+        ok: 4000,    // التشجيع كل 4 ثواني
+        warn: 5000,  // التنبيهات كل 5 ثواني
+        info: 6000
+    };
+    const cooldown = cooldowns[type] || 4000;
+
+    // لو لسه قايلين نفس الجملة من وقت أقل من الـ Cooldown، اعملها سكيب
+    if (lastSpeakTime[text] && (now - lastSpeakTime[text] < cooldown)) {
         return;
     }
 
-    // لو شغال في browser عادي
-    if (!('speechSynthesis' in window)) return;
-    if (type === 'err') window.speechSynthesis.cancel();
+    lastSpeakTime[text] = now;
+
+    // اقطع الكلام القديم (عشان تزعقله) *فقط* لو الرسالة إيرور (err)
+    if (type === 'err') {
+        window.speechSynthesis.cancel();
+    }
+
     const msg = new SpeechSynthesisUtterance(text);
-    msg.lang = document.getElementById('language-select').value === 'ar' ? 'ar-SA' : 'en-US';
-    msg.rate = 1.0;
+    const lang = document.getElementById('language-select').value;
+    msg.lang = lang === 'ar' ? 'ar-SA' : 'en-US';
+    
+    // ممكن تعدل سرعة الكلام لو حاسس إنه بطيء (1.0 هو الطبيعي)
+    msg.rate = 1.0; 
+    
     window.speechSynthesis.speak(msg);
 }
+
+
+// function speakCoach(text, type = 'warn') {
+//     const now = Date.now();
+//     const cooldowns = { err: 3000, ok: 4000, warn: 5000, info: 6000 };
+//     const cooldown = cooldowns[type] || 4000;
+//     if (lastSpeakTime[text] && (now - lastSpeakTime[text] < cooldown)) return;
+//     lastSpeakTime[text] = now;
+
+//     // لو شغال جوا APK
+//     if (window.Capacitor?.Plugins?.TextToSpeech) {
+//         window.Capacitor.Plugins.TextToSpeech.speak({
+//             text: text,
+//             lang: document.getElementById('language-select').value === 'ar' ? 'ar-SA' : 'en-US',
+//             rate: 1.0,
+//             pitch: 1.0,
+//             volume: 1.0
+//         }).catch(e => console.warn('TTS:', e));
+//         return;
+//     }
+
+//     // لو شغال في browser عادي
+//     if (!('speechSynthesis' in window)) return;
+//     if (type === 'err') window.speechSynthesis.cancel();
+//     const msg = new SpeechSynthesisUtterance(text);
+//     msg.lang = document.getElementById('language-select').value === 'ar' ? 'ar-SA' : 'en-US';
+//     msg.rate = 1.0;
+//     window.speechSynthesis.speak(msg);
+// }
 
 
 function showToast(message, type='info') {
@@ -818,6 +820,11 @@ function captureAndSend() {
 // START
 // ══════════════════════════════════════════════════════════════
 async function startWorkout() {
+      if ('speechSynthesis' in window) {
+        const u = new SpeechSynthesisUtterance('');
+        u.volume = 0;
+        window.speechSynthesis.speak(u);
+    }
   lastRepTime = 0;
 lastSpeakTime = {};
 elbowErrorStart = 0;
