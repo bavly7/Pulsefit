@@ -1,0 +1,149 @@
+# 🏋️‍♂️ PulseFit — AI-Powered Personal Trainer
+
+PulseFit is a web-based AI gym coach that watches you train through your webcam, counts your reps, corrects your form in real time (with voice feedback in Arabic/English), builds a personalized workout program, and tracks your nutrition — including Egyptian/Franco-Arabic food logging with an LLM fallback for unknown foods.
+
+> Graduation Project — AI / Computer Vision / Machine Learning
+
+---
+
+## ✨ What It Does (End-to-End Flow)
+
+1. **Sign up / log in** → session-based auth backed by SQLite.
+2. **Fill a fitness questionnaire** (experience level, goal, training days, injuries, weak muscles, available equipment, gender, activity level).
+3. **Get an auto-generated workout split** — a rule-based recommendation engine picks the training split, exercises, sets, and reps, balancing volume, fatigue, and equipment diversity for that user.
+4. **Train with the AI camera coach** — pick an exercise, turn on the webcam, and the app:
+   - Detects your body with pose estimation.
+   - Counts reps automatically by tracking joint angles through each rep's stages.
+   - Detects form errors per exercise (e.g. depth, knee valgus, back rounding, elbow flare) and gives **live corrective voice feedback** in Arabic or English (text-to-speech, cached so repeated cues don't regenerate audio).
+5. **Log meals** — search foods in English, Arabic, or Franco-Arabic ("fera5", "roz", "3enab", …); the app normalizes the query, matches it against a local Egyptian food database, applies cooking-method multipliers (grilled/fried/boiled/roasted), and falls back to an LLM (Groq) lookup for anything not in the database.
+6. **Track macros** — a calculator derives BMR/TDEE, calorie targets, and protein/fat/carb ranges from the user's profile and goal (bulk/cut/maintain/strength).
+7. **Review progress** — dashboard, workout history, and weekly stats pull everything together.
+8. **Install as an app** — PulseFit is a installable Progressive Web App (manifest + service worker) so it behaves like a native app on phones.
+
+---
+
+## 🧠 The AI/CV Core
+
+- **Pose estimation**: real-time human pose keypoints are extracted per video frame and used to compute joint angles (shoulder–hip–knee, hip–knee–ankle, etc.) with `AI_EXE/utils.py`'s angle-calculation helpers.
+- **Per-exercise trainers**: ~90 individual Python classes (one per exercise — squats, deadlifts, presses, rows, curls, raises, core work, etc.), each implementing its own state machine (`up`/`down` stage tracking), rep counter, and exercise-specific form rules.
+- **Hybrid inference**: most exercises run pose inference **server-side** (Ultralytics YOLO11-pose); at least one exercise runs **client-side** in the browser via MediaPipe Pose, streamed straight from the webcam with no server round-trip — showing both architectures in the same product.
+- **Voice AI Coach**: a shared `AICoach` engine turns form errors into contextual spoken cues, using gTTS for speech synthesis, a local MP3 cache to avoid regenerating repeated phrases, and a background queue/thread so audio doesn't block the video loop.
+- **Workout recommender**: a constraint-based engine (not a black box — deterministic and explainable) that scores exercises using tags like `stretch_focused`, `unilateral`, `high_stability`, enforces per-muscle volume targets by experience level, applies a fatigue-cost budget per session, blocks unsafe exercise pairings, and reasons about injuries/equipment/weak-point priorities.
+- **Nutrition NLP**: a Franco-Arabic → English normalization layer plus fuzzy matching (`difflib`) against a curated food database, with a Groq LLM call as a fallback for foods outside the local dataset.
+
+---
+
+## 🛠️ Technology Stack
+
+| Layer | Technology |
+|---|---|
+| **Backend framework** | Python, Flask, Gunicorn |
+| **Computer vision / pose estimation** | Ultralytics YOLO11-pose (server-side), MediaPipe Pose (client-side, browser) |
+| **Numerical / CV utilities** | OpenCV (headless), NumPy |
+| **LLM integration** | Groq API (LLM fallback for food lookup / AI coach reasoning) |
+| **Text-to-speech** | gTTS (Google Text-to-Speech), pygame (audio playback), local MP3 caching |
+| **Database** | SQLite (users, sessions, workout history) |
+| **Auth** | Session-based auth with hashed passwords (`hashlib`, `secrets`) |
+| **Frontend** | HTML5, CSS3, vanilla JavaScript (per-page modules: dashboard, workout, nutrition, questionnaire) |
+| **PWA** | Web App Manifest, Service Worker (`sw.js`), app icons |
+| **Containerization / Deployment** | Docker (`python:3.12-slim` base), deployed on Railway |
+| **Environment config** | `python-dotenv`, custom multi-encoding `.env` parser |
+
+---
+
+## 📁 Project Structure
+
+```
+Pulsefit/
+├── app.py                  # Flask app: routes, auth, API endpoints, session/workout state
+├── workout4.py              # Rule-based workout plan generator / recommendation engine
+├── calories.py               # BMR/TDEE/macro calculator
+├── food2.py / food3.py       # Egyptian food database + Franco-Arabic NLP + Groq fallback (v3 = active)
+├── setup_groq.py             # CLI helper to save your Groq API key into .env
+├── check_db.py / fix_it.py   # Dev/maintenance utility scripts
+├── test_legs.py               # Sanity test for the workout engine (leg-day logic)
+├── dockerfile                 # Container build for deployment
+├── requirements.txt
+├── AI_EXE/                    # One AI trainer class per exercise (~90 files)
+│   ├── ai_coach3.py            # Voice coaching engine (TTS + queueing)
+│   ├── exercise_registry.py    # Maps exercise keys → trainer classes
+│   ├── messages.py              # All voice/feedback message strings (AR/EN)
+│   ├── utils.py                  # Angle calculation & shared CV helpers
+│   └── <exercise_name>.py        # e.g. barbell_back_squat.py, hip_thrust.py, pull_up.py ...
+├── templates/                  # Jinja2 HTML pages (dashboard, workout, nutrition, login, etc.)
+├── static/                     # CSS, JS, PWA manifest assets, service worker
+├── voice_cache/                # Cached generated TTS audio files
+└── yolo11n-pose.pt              # YOLO11 pose estimation model weights
+```
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+- Python 3.12
+- A [Groq API key](https://console.groq.com/keys) (free tier available)
+- A webcam (for the live workout coach)
+
+### Installation
+
+```bash
+git clone https://github.com/bavly7/Pulsefit.git
+cd Pulsefit
+pip install -r requirements.txt
+```
+
+### Configure your API key
+
+```bash
+python setup_groq.py
+# paste your Groq key (starts with gsk_) when prompted
+```
+
+This writes a `.env` file with:
+```
+GROQ_API_KEY=gsk_...
+```
+
+### Run locally
+
+```bash
+python app.py
+```
+
+Then open `http://localhost:5000` (or the port shown in the console).
+
+### Run with Docker
+
+```bash
+docker build -t pulsefit .
+docker run -p 8080:8080 -e GROQ_API_KEY=gsk_... pulsefit
+```
+
+---
+
+## 📝 Notes
+
+- Deployed/tested for platforms like Railway, where env vars are injected directly (no `.env` file needed in production).
+- Voice feedback is bilingual (Arabic / English) and food logging supports English, Arabic, and Franco-Arabic input out of the box.
+- The workout recommendation engine is fully deterministic/rule-based — every recommendation can be traced back to a specific volume, fatigue, or scoring rule, which makes it explainable for a graduation defense.
+
+---
+
+## 🚀 Future Work — Our Vision for V2
+
+PulseFit isn't just a fitness app — it's a scalable AI ecosystem designed to continuously learn, adapt, and deliver data-driven fitness experiences. V1 is launching soon, and V2 is already in development:
+
+- **MediaPipe client-side pose estimation with live skeleton visualization** — extending the browser-side pipeline (already proven on hammer curl) to more exercises, with the skeleton overlay rendered live for the user.
+- **ML-powered recommendation engine** trained from real user acceptance and progress data — evolving the current rule-based recommender into a learned model informed by which plans users actually stick with and progress on.
+- **AI-generated injury rehabilitation programs** — adaptive plans for users training around an injury.
+- **Sport-specific conditioning plans** — programs tailored to the demands of a chosen sport, not just general fitness goals.
+- **Natural human voice coaching** — replacing TTS-cached cues with more natural, expressive voice feedback.
+
+Feedback is always welcome!
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](./LICENSE).
